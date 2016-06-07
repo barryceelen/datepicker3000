@@ -52,7 +52,7 @@ function datepicker3000_add_meta_box( $post ) {
  */
 function datepicker3000_meta_box() {
 
-	echo '<input type="text" name="datepicker3000" />';
+	echo '<input type="text" name="datepicker3000" /><input type="hidden" name="datepicker3000-alt" />';
 }
 
 /**
