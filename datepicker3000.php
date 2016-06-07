@@ -77,7 +77,9 @@ function datepicker3000_enqueue_scripts( $hook_suffix ) {
 }
 
 /**
- * Enqueue own base jQuery UI base styles and datepicker skin.
+ * Enqueue our own base jQuery UI base styles and datepicker skin.
+ *
+ * See: https://core.trac.wordpress.org/ticket/18909
  *
  * @since 1.0.0
  *
