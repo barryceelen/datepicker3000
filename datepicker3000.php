@@ -10,7 +10,7 @@
  *
  * Plugin Name: Datepicker3000
  * Description: jQuery UI Datepicker example plugin. Adds a meta box with  date input field to the post edit screen. See: <a href="https://core.trac.wordpress.org/ticket/29420">https://core.trac.wordpress.org/ticket/29420</a>
- * Version:     1.0.0
+ * Version:     1.0.1
  * Author:      Barry Ceelen
  * Author URI:  https://github.com/barryceelen
  * License:     GPL-3.0+
@@ -24,7 +24,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 add_action( 'admin_enqueue_scripts', 'datepicker3000_enqueue_scripts' );
 add_action( 'admin_enqueue_scripts', 'datepicker3000_enqueue_styles' );
+add_action( 'init', 'datepicker3000_add_post_type_support' );
 add_action( 'add_meta_boxes', 'datepicker3000_add_meta_box' );
+add_action( 'save_post', 'datepicker3000_save_meta_box', 10, 2 );
+
+/**
+ * Add support for the datepicker to the 'post' post type by default.
+ *
+ * @since 1.0.1
+ */
+function datepicker3000_add_post_type_support() {
+
+	/**
+	 * Filters the list of supported post types
+	 *
+	 * @since 1.0.1
+	 *
+	 * @param array An array of supported post types.
+	 */
+	$supported_post_types = apply_filters( 'datepicker3000_supported_post_types', array( 'post' ) );
+
+	foreach( $supported_post_types as $post_type ) {
+		add_post_type_support( $post_type, 'datepicker3000' );
+	}
+}
 
 /**
  * Register meta box.
@@ -39,7 +62,7 @@ function datepicker3000_add_meta_box( $post ) {
 		'datepicker',
 		__( 'Date', 'datepicker' ),
 		'datepicker3000_meta_box',
-		'post',
+		get_post_types_by_support( 'datepicker3000' ),
 		'normal',
 		'high'
 	);
@@ -52,7 +75,52 @@ function datepicker3000_add_meta_box( $post ) {
  */
 function datepicker3000_meta_box() {
 
-	echo '<input type="text" name="datepicker3000" /><input type="hidden" name="datepicker3000-alt" />';
+	global $post;
+
+	$date         = empty( $post->_date ) ? current_time( 'Y-m-d' ): $post->_date;
+	$date_display = mysql2date( get_option( 'date_format' ), $date );
+
+	wp_nonce_field( plugin_basename( __FILE__ ), 'datepicker3000_' . $post->ID );
+
+	printf(
+		'<input type="text" name="datepicker3000" style="background:#fff;cursor:pointer;" value="%s" readonly="readonly" /><input type="hidden" name="datepicker3000-alt" value="%s" /> <span class="description hide-if-js">%s</span>',
+		esc_attr( $date_display ),
+		esc_attr( $date ),
+		__( 'JavaScript must be enabled to use this feature.' )
+	);
+}
+
+/**
+ * Save the date meta box value.
+ *
+ * @since 1.0.1
+ *
+ * @param int     $post_id ID of the post in question.
+ * @param WP_Post $post    Post object.
+ */
+function datepicker3000_save_meta_box( $post_id, $post ) {
+
+	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+		return;
+	}
+
+	if ( ! in_array( $post->post_type, get_post_types_by_support( 'datepicker3000' ) ) ) {
+		return;
+	}
+
+	if ( ! isset( $_POST[ 'datepicker3000_' . $post_id ] ) || ! wp_verify_nonce( $_POST[ 'datepicker3000_' . $post_id ], plugin_basename( __FILE__ ) ) ) {
+		return;
+	}
+
+	$post_type = get_post_type_object( $post->post_type );
+
+	if ( ! current_user_can( $post_type->cap->edit_post, $post_id ) ) {
+		return;
+	}
+
+	if ( isset( $_POST['datepicker3000-alt'] ) ) {
+		update_post_meta( $post_id, '_date', trim( $_POST['datepicker3000-alt'] ) );
+	}
 }
 
 /**
